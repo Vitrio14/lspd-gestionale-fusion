@@ -232,23 +232,56 @@
             .catch(() => showNotice("CREDENTIALS ERROR", "error"));
     });
 
-    function logout() { auth.signOut(); }
+    function logout() { 
+    auth.signOut().then(() => {
+        // Reset interfaccia
+        document.getElementById('adminTabBtn').classList.add('hidden');
+        document.getElementById('tab-admin').classList.add('hidden');
+        document.getElementById('tab-dimissioni').classList.remove('hidden'); // Torna alla home
+        
+        // Svuota le liste admin per sicurezza
+        document.getElementById('admin-dimissioni-list').innerHTML = "";
+        document.getElementById('admin-dimissioni-evase-list').innerHTML = "";
+        document.getElementById('admin-fascicoli-list').innerHTML = "";
+        document.getElementById('admin-cadetti-list').innerHTML = "";
+    }); 
+}
 
-    function setupInterface(email) {
-        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
-        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
-        if(isAdmin) {
-            document.getElementById('adminTabBtn').classList.remove('hidden');
-            caricaDatiAdmin();
-        }
+function setupInterface(email) {
+    const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+    
+    // Se NON è admin, forza la chiusura della tab admin se era rimasta aperta
+    if (!isAdmin) {
+        document.getElementById('tab-admin').classList.add('hidden');
+        document.getElementById('adminTabBtn').classList.add('hidden');
+        switchTab('dimissioni'); // Forza il ritorno alla sezione civile
+    } else {
+        document.getElementById('adminTabBtn').classList.remove('hidden');
+        caricaDatiAdmin();
     }
 
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        event.currentTarget.classList.add('active');
+    document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
+}
+function switchTab(tab) {
+    const user = auth.currentUser;
+    const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
+
+    // Blocca l'accesso alla tab admin se non si è admin
+    if (tab === 'admin' && !isAdmin) {
+        showNotice("ACCESSO NEGATO: AREA RISERVATA", "error");
+        return;
     }
+
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    
+    // Gestione focus bottone (funziona anche se chiamato da switchTab diretto)
+    const activeBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                           .find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
+    if(activeBtn) activeBtn.classList.add('active');
+}
 
     // --- MODAL & FIREBASE LOGIC ---
     async function showDetails(coll, id) {
@@ -390,4 +423,5 @@ function caricaDatiAdmin() {
     }
 </script>
 </body>
+
 </html>
