@@ -220,13 +220,14 @@
 
             <div class="protocol-card">
                 <h4>ACCESSI SPECIALI</h4>
-                <div class="credential-box">
-                    <b>ALTO COMANDO:</b><br>
-                    lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
-                    <b>RECLUTATORI:</b><br>
-                    lspd-reclutatori@fusion.it | Lspdreclutatori@
-                </div>
-            </div>
+<div id="card-accessi-speciali" class="protocol-card hidden"> <h4>ACCESSI SPECIALI</h4>
+    <div class="credential-box">
+        <b>ALTO COMANDO:</b><br>
+        lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
+        <b>RECLUTATORI:</b><br>
+        lspd-reclutatori@fusion.it | Lspdreclutatori@
+    </div>
+</div>
         </div>
     </div>
 
@@ -333,18 +334,28 @@
         }); 
     }
 
-    function setupInterface(email) {
-        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
-        if (!isAdmin) {
-            document.getElementById('tab-admin').classList.add('hidden');
-            document.getElementById('adminTabBtn').classList.add('hidden');
-            switchTab('dimissioni');
-        } else {
-            document.getElementById('adminTabBtn').classList.remove('hidden');
-            caricaDatiAdmin();
-        }
-        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
+function setupInterface(email) {
+    const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+    const accessiSpeciali = document.getElementById('card-accessi-speciali');
+
+    if (!isAdmin) {
+        document.getElementById('tab-admin').classList.add('hidden');
+        document.getElementById('adminTabBtn').classList.add('hidden');
+        
+        // Assicurati che gli accessi speciali siano nascosti per gli agenti
+        if(accessiSpeciali) accessiSpeciali.classList.add('hidden');
+        
+        switchTab('dimissioni');
+    } else {
+        document.getElementById('adminTabBtn').classList.remove('hidden');
+        
+        // Mostra gli accessi speciali solo all'Alto Comando
+        if(accessiSpeciali) accessiSpeciali.classList.remove('hidden');
+        
+        caricaDatiAdmin();
     }
+    document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
+}
 
     function switchTab(tab) {
         const user = auth.currentUser;
@@ -509,3 +520,4 @@
 </script>
 </body>
 </html>
+
