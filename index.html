@@ -289,36 +289,42 @@
     const EMAIL_ADMIN = "lspd-altocom@fusion.it";
     const EMAIL_GESTIONALE = "lspd-gestionale@fusion.it";
 
+// MODIFICA QUESTA FUNZIONE
 async function logAction(actionDescription) {
     const user = auth.currentUser;
-    // Se non c'è un utente o l'email non è ancora disponibile, annulla il log
-    if (!user || !user.email) {
-        console.warn("Log saltato: Utente non autenticato.");
+    
+    // Se l'utente non è loggato, NON chiamare Firestore (evita l'errore 307)
+    if (!user) {
+        console.warn("Log annullato: Nessun utente autenticato.");
         return;
     }
 
     try {
         await db.collection("audit_logs").add({
-            email: user.email.toLowerCase(), // Forza minuscolo per coerenza con le regole
+            email: user.email,
             action: actionDescription,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
     } catch(e) { 
-        console.error("Errore di permessi nel Log:", e.message); 
+        // Se arrivi qui, le REGOLE sul sito di Firebase sono sbagliate
+        console.error("Errore critico Firestore Rules:", e.message); 
     }
 }
 
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            logAction("LOGIN EFFETTUATO");
-            setupInterface(user.email);
-        } else {
-            document.getElementById('authSection').classList.remove('hidden');
-            document.getElementById('mainApp').classList.add('hidden');
-        }
-    });
+// MODIFICA IL LISTENER DI STATO
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        
+        // Chiama il log SOLO ORA che l'utente è confermato
+        logAction("UTENTE ONLINE: " + user.email);
+        setupInterface(user.email);
+    } else {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('hidden');
+    }
+});
 
 document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -593,5 +599,6 @@ document.getElementById('loginForm').addEventListener('submit', e => {
 </script>
 </body>
 </html>
+
 
 
