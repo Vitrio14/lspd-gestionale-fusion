@@ -197,47 +197,25 @@
             <div class="protocol-card">
                 <h4>PORTALE ESAMI</h4>
                 <a href="https://lspd-esami.vitriotv.com" target="_blank">Apri Link Diretto</a>
-                <div class="credential-box">
-                    Email: lspd-esami@fusion.it<br>
-                    Pass: Esamilspd@
-                </div>
+                <div class="credential-box">Email: lspd-esami@fusion.it<br>Pass: Esamilspd@</div>
             </div>
-
             <div class="protocol-card">
                 <h4>BANDO REPARTI</h4>
                 <a href="https://lspd-bandi.vitriotv.com" target="_blank">Apri Link Diretto</a>
-                <div class="credential-box">
-                    Email: lspd-bandi@fusion.it<br>
-                    Pass: Bandilspd@
-                </div>
+                <div class="credential-box">Email: lspd-bandi@fusion.it<br>Pass: Bandilspd@</div>
             </div>
-
             <div class="protocol-card">
                 <h4>GESTIONALE</h4>
                 <a href="https://lspd-gestionale.vitriotv.com/" target="_blank">Apri Link Diretto</a>
-                <div class="credential-box">
-                    Email: lspd-gestionale@fusion.it<br>
-                    Pass: Lspdgestionale@
-                </div>
+                <div class="credential-box">Email: lspd-gestionale@fusion.it<br>Pass: Lspdgestionale@</div>
             </div>
-
-            <div class="protocol-card">
-                <h4>RECLUTAMENTO CITTADINO</h4>
-                <a href="https://lspd-recruit.vitriotv.com" target="_blank">Apri Link Diretto</a>
-            </div>
-
-            <div class="protocol-card">
-                <h4>MODULO MATRICOLE</h4>
-                <a href="https://lspd-matricole.vitriotv.com" target="_blank">Apri Link Diretto</a>
-            </div>
-
+            <div class="protocol-card"><h4>RECLUTAMENTO CITTADINO</h4><a href="https://lspd-recruit.vitriotv.com" target="_blank">Apri Link Diretto</a></div>
+            <div class="protocol-card"><h4>MODULO MATRICOLE</h4><a href="https://lspd-matricole.vitriotv.com" target="_blank">Apri Link Diretto</a></div>
             <div id="card-accessi-speciali" class="protocol-card hidden"> 
                 <h4>ACCESSI SPECIALI</h4>
                 <div class="credential-box">
-                    <b>ALTO COMANDO:</b><br>
-                    lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
-                    <b>RECLUTATORI:</b><br>
-                    lspd-reclutatori@fusion.it | Lspdreclutatori@
+                    <b>ALTO COMANDO:</b><br>lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
+                    <b>RECLUTATORI:</b><br>lspd-reclutatori@fusion.it | Lspdreclutatori@
                 </div>
             </div>
         </div>
@@ -496,9 +474,8 @@
 
     document.getElementById('formDimissioni').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const nome = document.getElementById('dimNome').value;
         await db.collection("dimissioni").add({
-            nome: nome, grado: document.getElementById('dimGrado').value,
+            nome: document.getElementById('dimNome').value, grado: document.getElementById('dimGrado').value,
             matricola: document.getElementById('dimMatricola').value,
             dataArr: document.getElementById('dimData').value,
             firma: document.getElementById('dimFirma').value,
@@ -529,15 +506,21 @@
 
     document.getElementById('formAddestramento').addEventListener('submit', async (e) => {
         e.preventDefault();
-        await db.collection("addestramenti").add({
-            agente: document.getElementById('addNome').value,
-            matricola: document.getElementById('addMatricola').value,
-            tipo: document.getElementById('addTipo').value,
-            voto: document.getElementById('addVoto').value,
-            istruttore: document.getElementById('addFirma').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showNotice("REGISTRATO", "success"); e.target.reset();
+        try {
+            await db.collection("addestramenti").add({
+                agente: document.getElementById('addNome').value,
+                matricola: document.getElementById('addMatricola').value,
+                tipo: document.getElementById('addTipo').value,
+                voto: document.getElementById('addVoto').value,
+                istruttore: document.getElementById('addFirma').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            logAction("ADDESTRAMENTO REGISTRATO: " + document.getElementById('addNome').value);
+            showNotice("REGISTRATO CON SUCCESSO", "success");
+            e.target.reset();
+        } catch(err) {
+            showNotice("ERRORE DATABASE", "error");
+        }
     });
 
     async function aggiornaStato(coll, id, nuovoStato) {
@@ -562,33 +545,18 @@
         setTimeout(() => n.remove(), 3000);
     }
 
-document.addEventListener('contextmenu', event => {
-    event.preventDefault();
-    showNotice("ACCESSO NEGATO: TASTO DESTRO DISABILITATO", "error");
-});
+    document.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        showNotice("ACCESSO NEGATO: TASTO DESTRO DISABILITATO", "error");
+    });
 
-document.onkeydown = function(e) {
-    if(e.keyCode == 123) {
-        showNotice("PROTOCOLLO DI SICUREZZA: F12 BLOCCATO", "error");
-        return false;
-    }
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
-        showNotice("TENTATIVO DI VIOLAZIONE RILEVATO", "error");
-        return false;
-    }
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
-        showNotice("ACCESSO CONSOLE NEGATO", "error");
-        return false;
-    }
-    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
-        showNotice("SORGENTE CRIPTATA - ACCESSO NEGATO", "error");
-        return false;
-    }
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
-        showNotice("SISTEMA DI PROTEZIONE ATTIVO", "error");
-        return false;
-    }
-};
+    document.onkeydown = function(e) {
+        if(e.keyCode == 123) { showNotice("PROTOCOLLO DI SICUREZZA: F12 BLOCCATO", "error"); return false; }
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { showNotice("TENTATIVO DI VIOLAZIONE RILEVATO", "error"); return false; }
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { showNotice("ACCESSO CONSOLE NEGATO", "error"); return false; }
+        if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { showNotice("SORGENTE CRIPTATA - ACCESSO NEGATO", "error"); return false; }
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { showNotice("SISTEMA DI PROTEZIONE ATTIVO", "error"); return false; }
+    };
 </script>
 </body>
 </html>
