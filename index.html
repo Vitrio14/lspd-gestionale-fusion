@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSPD - Database Operativo</title>
+    
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Barlow+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --police-blue: #0055ff; --police-dark: #001133; --police-accent: #ffd700;
+            --terminal-bg: #05070a; --border-blue: #0055ff; --neon-glow: rgba(0, 85, 255, 0.4);
+            --danger: #ff4444; --success: #00ff88; --warning: #ffaa00;
+        }
+
+        body {
+            background-color: var(--terminal-bg);
+            background: linear-gradient(rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.95)), url('./banner.png') no-repeat center center fixed;
+            background-size: cover; color: #ffffff; font-family: 'Barlow Condensed', sans-serif;
+            margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+
+        .container { width: 95%; max-width: 1200px; background: rgba(13, 17, 23, 0.95); border: 1px solid var(--border-blue); padding: 25px; margin: 20px 0; backdrop-filter: blur(10px); box-shadow: 0 0 20px var(--neon-glow); position: relative; flex: 1; }
+        .hidden { display: none !important; }
+        
+        /* SISTEMA TABELLE MODERNO - ALLINEAMENTO FISSO */
+        .data-row { 
+            display: grid; 
+            grid-template-columns: 2fr 1fr 1fr; 
+            gap: 15px; 
+            align-items: center; 
+            padding: 12px; 
+            background: rgba(255,255,255,0.03); 
+            border: 1px solid rgba(0, 85, 255, 0.2);
+            margin-bottom: 5px;
+        }
+        .data-header { 
+            display: grid; 
+            grid-template-columns: 2fr 1fr 1fr; 
+            gap: 15px; 
+            padding: 10px 12px; 
+            color: var(--police-accent); 
+            font-family: 'Orbitron'; 
+            font-size: 0.65rem; 
+            border-bottom: 2px solid var(--police-blue);
+            text-transform: uppercase;
+        }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: rgba(255,255,255,0.03); padding: 20px; border: 1px dashed var(--police-blue); margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+        label { color: var(--police-accent); font-family: 'Orbitron'; font-size: 0.65rem; margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+        input, select, textarea { background: #000; border: 1px solid var(--police-blue); color: #fff; padding: 10px; font-family: 'Barlow Condensed'; font-size: 1rem; }
+
+        .nav-menu { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--police-blue); padding-bottom: 10px; flex-wrap: wrap; }
+        .nav-btn { background: transparent; border: 1px solid var(--police-blue); color: #fff; padding: 8px 15px; font-family: 'Orbitron'; font-size: 0.65rem; cursor: pointer; transition: 0.3s; }
+        .nav-btn.active { background: var(--police-blue); color: white; }
+
+        button { background: var(--police-dark); color: white; border: 1px solid var(--police-blue); padding: 8px 15px; font-family: 'Orbitron'; cursor: pointer; font-size: 0.65rem; transition: 0.3s; }
+        button:hover { background: var(--police-blue); box-shadow: 0 0 10px var(--police-blue); }
+        .btn-danger { border-color: var(--danger); color: var(--danger); }
+        .btn-success { border-color: var(--success); color: var(--success); }
+
+        /* FOOTER */
+        .main-footer {
+            width: 100%;
+            padding: 30px 0;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid var(--police-blue);
+            margin-top: auto;
+        }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 10000; }
+        .modal-content { background: #0a0d12; border: 2px solid var(--police-blue); width: 90%; max-width: 600px; padding: 30px; box-shadow: 0 0 30px var(--police-blue); }
+
+        #notification-container { position: fixed; top: 30px; right: 30px; z-index: 10001; }
+        .notice { background: rgba(13, 17, 23, 0.9); border-left: 5px solid var(--police-blue); color: #fff; padding: 15px 25px; font-family: 'Orbitron'; font-size: 0.75rem; margin-bottom: 10px; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+<div id="notification-container"></div>
+
+<div id="infoModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header" id="modalTitle" style="font-family:'Orbitron'; color:var(--police-blue); border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:15px; font-size:1.1rem;">DETTAGLI</div>
+        <div class="modal-body" id="modalBody" style="font-size:1.1rem; line-height:1.4;"></div>
+        <button onclick="closeModal()" style="margin-top:25px; width:100%;">CHIUDI TERMINALE</button>
+    </div>
+</div>
+
+<img src="./logo.png" alt="LSPD Logo" style="width:80px; margin-top:20px; filter: drop-shadow(0 0 10px var(--neon-glow));">
+
+<div id="authSection" class="container" style="max-width:350px; text-align:center; flex:none;">
+    <h2 style="font-family:'Orbitron'; font-size:1rem; color:var(--police-accent);">ACCESSO DATABASE LSPD</h2>
+    <form id="loginForm">
+        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" required></div>
+        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" required></div>
+        <button type="submit" style="width:100%;">LOGIN</button>
+    </form>
+</div>
+
+<div id="mainApp" class="container hidden">
+    <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--police-blue); padding-bottom: 15px; margin-bottom: 20px;">
+        <div>
+            <h1 style="font-family:'Orbitron'; font-size:1.2rem; margin:0;">DATABASE OPERATIVO</h1>
+            <span id="userRoleDisplay" style="color:var(--police-accent); font-size:0.65rem; font-family:'Orbitron';"></span>
+        </div>
+        <button onclick="logout()" class="btn-danger">LOGOUT</button>
+    </div>
+
+    <div class="nav-menu">
+        <button class="nav-btn active" onclick="switchTab('dimissioni')">Dimissioni</button>
+        <button class="nav-btn" onclick="switchTab('fascicoli')">Fascicoli</button>
+        <button class="nav-btn" onclick="switchTab('cadetti')">Cadetti</button>
+        <button id="adminTabBtn" class="nav-btn hidden" onclick="switchTab('admin')">Alto Comando</button>
+    </div>
+
+    <div id="tab-dimissioni" class="tab-content">
+        <form id="formDimissioni">
+            <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[+] COMPILA DIMISSIONI</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Nome e Cognome</label><input type="text" id="dimNome" required></div>
+                <div class="form-group"><label>Grado</label><input type="text" id="dimGrado" required></div>
+                <div class="form-group"><label>Matricola</label><input type="text" id="dimMatricola" required></div>
+                <div class="form-group"><label>Data Fine Rapporto</label><input type="date" id="dimData" required></div>
+                <div class="form-group" style="grid-column: span 2;"><label>Firma Digitale</label><input type="text" id="dimFirma" required></div>
+            </div>
+            <button type="submit" class="btn-success" style="width:100%;">INVIA AL COMANDO</button>
+        </form>
+    </div>
+
+    <div id="tab-fascicoli" class="tab-content hidden">
+        <form id="formFascicoli">
+            <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[+] NUOVO FASCICOLO CASO</h3>
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: span 2;"><label>Oggetto</label><input type="text" id="fasCaso" required></div>
+                <div class="form-group"><label>Responsabile</label><input type="text" id="fasAgenteResp" required></div>
+                <div class="form-group"><label>Prove</label><input type="text" id="fasProve" placeholder="Link prove"></div>
+                <div class="form-group" style="grid-column: span 2;"><label>Descrizione</label><textarea id="fasDesc" rows="4"></textarea></div>
+            </div>
+            <button type="submit" class="btn-success" style="width:100%;">ARCHIVIA</button>
+        </form>
+    </div>
+
+    <div id="tab-cadetti" class="tab-content hidden">
+        <form id="formCadetti">
+            <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[+] VALUTAZIONE CADETTI</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Cadetto</label><input type="text" id="cadNome" required></div>
+                <div class="form-group"><label>Istruttore</label><input type="text" id="cadAgente" required></div>
+                <div class="form-group"><label>Esito</label><select id="cadRapporto"><option value="Positivo">Positivo</option><option value="Negativo">Negativo</option></select></div>
+                <div class="form-group" style="grid-column: span 3;"><label>Note</label><textarea id="cadDesc" rows="4"></textarea></div>
+            </div>
+            <button type="submit" class="btn-success" style="width:100%;">REGISTRA VALUTAZIONE</button>
+        </form>
+    </div>
+
+    <div id="tab-admin" class="tab-content hidden">
+        <div style="border-left: 4px solid var(--danger); padding:20px; background: rgba(255,0,0,0.02);">
+            <h2 style="font-family:'Orbitron'; color:var(--danger); font-size:1rem; margin-top:0;">REVISIONE ALTO COMANDO</h2>
+            
+            <section style="margin-bottom:30px;">
+                <h4 style="color:var(--warning); border-bottom:1px solid #333;">DIMISSIONI IN ATTESA</h4>
+                <div class="data-header"><span>Soggetto</span><span>Grado</span><span>Gestione</span></div>
+                <div id="admin-dimissioni-list"></div>
+            </section>
+
+            <section style="margin-bottom:30px;">
+    <h4 style="color:rgba(255,255,255,0.5);">STORICO DIMISSIONI EVASE</h4>
+    <div class="data-header"><span>Soggetto</span><span>Grado</span><span>Esito</span></div>
+    <div id="admin-dimissioni-evase-list"></div>
+</section>
+
+            <section style="margin-bottom:30px;">
+                <h4 style="color:var(--police-accent); border-bottom:1px solid #333;">RECAP FASCICOLI</h4>
+                <div class="data-header"><span>Caso</span><span>Responsabile</span><span>Vedi</span></div>
+                <div id="admin-fascicoli-list"></div>
+            </section>
+
+            <section>
+                <h4 style="color:var(--success); border-bottom:1px solid #333;">REVISIONE CADETTI</h4>
+                <div class="data-header"><span>Soggetto</span><span>Esito</span><span>Azione</span></div>
+                <div id="admin-cadetti-list"></div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<footer class="main-footer">
+    <div style="color: rgba(255,255,255,0.6); font-family: 'Orbitron'; font-size: 0.7rem; letter-spacing: 1px;">
+        © 2026 <span style="color: var(--police-accent);">LOS SANTOS POLICE DEPARTMENT</span> — PORTALE OPERATIVO CRIPTATO
+    </div>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDfIW4GjBZ4QGPvfJtzLAr34VxDRLzcU6M",
+        authDomain: "lspd-portal-d34b0.firebaseapp.com",
+        projectId: "lspd-portal-d34b0",
+        storageBucket: "lspd-portal-d34b0.firebasestorage.app",
+        messagingSenderId: "991237515788",
+        appId: "1:991237515788:web:302c1b6819947116199c29"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const EMAIL_ADMIN = "lspd-altocom@fusion.it";
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            setupInterface(user.email);
+        } else {
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', e => {
+        e.preventDefault();
+        auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)
+            .catch(() => showNotice("CREDENTIALS ERROR", "error"));
+    });
+
+    function logout() { auth.signOut(); }
+
+    function setupInterface(email) {
+        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
+        if(isAdmin) {
+            document.getElementById('adminTabBtn').classList.remove('hidden');
+            caricaDatiAdmin();
+        }
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+    }
+
+    // --- MODAL & FIREBASE LOGIC ---
+    async function showDetails(coll, id) {
+        const doc = await db.collection(coll).doc(id).get();
+        if(!doc.exists) return;
+        const d = doc.data();
+        let content = "";
+        
+        if(coll === 'dimissioni') {
+            content = `<p><b>SOGGETTO:</b> ${d.nome}</p><p><b>GRADO:</b> ${d.grado}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>DATA:</b> ${d.dataArr}</p><p><b>FIRMA:</b> ${d.firma}</p>`;
+        } else if(coll === 'fascicoli') {
+            content = `<p><b>CASO:</b> ${d.caso}</p><p><b>RESPONSABILE:</b> ${d.agenteResp}</p><p><b>PROVE:</b> ${d.prove || 'Nessuna'}</p><p><b>REPORT:</b><br>${d.desc}</p>`;
+        } else if(coll === 'rapporti_cadetti') {
+            content = `<p><b>CADETTO:</b> ${d.cadetto}</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p><p><b>ESITO:</b> ${d.esito}</p><p><b>NOTE:</b><br>${d.note}</p>`;
+        }
+
+        document.getElementById('modalBody').innerHTML = content;
+        document.getElementById('modalTitle').innerText = coll.toUpperCase();
+        document.getElementById('infoModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('infoModal').classList.add('hidden'); }
+
+function caricaDatiAdmin() {
+    // 1. Dimissioni PENDENTI (con tasti azione)
+    db.collection("dimissioni").where("stato", "==", "PENDENTE").onSnapshot(snap => {
+        const container = document.getElementById('admin-dimissioni-list');
+        container.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            container.innerHTML += `<div class="data-row">
+                <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">🔍 <b>${d.nome}</b></span>
+                <span>${d.grado}</span>
+                <div style="display:flex; gap:5px;">
+                    <button onclick="aggiornaStato('dimissioni', '${doc.id}', 'ACCETTATA')" class="btn-success">OK</button>
+                    <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger">X</button>
+                </div>
+            </div>`;
+        });
+    });
+
+    // 2. NUOVO: Dimissioni EVASE (Sola lettura/Eliminazione)
+    db.collection("dimissioni").where("stato", "==", "ACCETTATA").onSnapshot(snap => {
+        const container = document.getElementById('admin-dimissioni-evase-list');
+        container.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            container.innerHTML += `<div class="data-row" style="opacity: 0.7; border-color: rgba(0, 255, 136, 0.2);">
+                <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
+                <span>${d.grado}</span>
+                <div style="display:flex; gap:5px;">
+                    <span style="color:var(--success); font-size:0.6rem; font-family:'Orbitron';">EVASA</span>
+                    <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger" style="padding:2px 6px; font-size:0.5rem;">ELIMINA</button>
+                </div>
+            </div>`;
+        });
+    });
+
+    // 3. Fascicoli
+    db.collection("fascicoli").orderBy("timestamp", "desc").onSnapshot(snap => {
+        const container = document.getElementById('admin-fascicoli-list');
+        container.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            container.innerHTML += `<div class="data-row"><span>${d.caso}</span><span>${d.agenteResp}</span><button onclick="showDetails('fascicoli', '${doc.id}')">Vedi</button></div>`;
+        });
+    });
+
+    // 4. Cadetti
+    db.collection("rapporti_cadetti").onSnapshot(snap => {
+        const container = document.getElementById('admin-cadetti-list');
+        container.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            container.innerHTML += `<div class="data-row"><span>${d.cadetto}</span><span style="color:${d.esito === 'Positivo' ? 'var(--success)' : 'var(--danger)'}">${d.esito}</span><button onclick="showDetails('rapporti_cadetti', '${doc.id}')">Dettagli</button></div>`;
+        });
+    });
+}
+
+    // --- FORM SUBMIT HANDLERS ---
+    document.getElementById('formDimissioni').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await db.collection("dimissioni").add({
+            nome: document.getElementById('dimNome').value,
+            grado: document.getElementById('dimGrado').value,
+            matricola: document.getElementById('dimMatricola').value,
+            dataArr: document.getElementById('dimData').value,
+            firma: document.getElementById('dimFirma').value,
+            stato: 'PENDENTE',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showNotice("TRASMESSO", "success"); e.target.reset();
+    });
+
+    document.getElementById('formFascicoli').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await db.collection("fascicoli").add({
+            caso: document.getElementById('fasCaso').value,
+            agenteResp: document.getElementById('fasAgenteResp').value,
+            prove: document.getElementById('fasProve').value,
+            desc: document.getElementById('fasDesc').value,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showNotice("ARCHIVIATO", "success"); e.target.reset();
+    });
+
+    document.getElementById('formCadetti').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await db.collection("rapporti_cadetti").add({
+            cadetto: document.getElementById('cadNome').value,
+            istruttore: document.getElementById('cadAgente').value,
+            esito: document.getElementById('cadRapporto').value,
+            note: document.getElementById('cadDesc').value,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showNotice("REGISTRATO", "success"); e.target.reset();
+    });
+
+    async function aggiornaStato(coll, id, nuovoStato) {
+        await db.collection(coll).doc(id).update({ stato: nuovoStato });
+        showNotice("AGGIORNATO", "success");
+    }
+
+    async function eliminaRecord(coll, id) {
+        if(confirm("ELIMINARE DEFINITIVAMENTE?")) {
+            await db.collection(coll).doc(id).delete();
+            showNotice("ELIMINATO", "error");
+        }
+    }
+
+    function showNotice(msg, type) {
+        const c = document.getElementById('notification-container');
+        const n = document.createElement('div');
+        n.className = `notice`;
+        n.style.borderColor = type === 'success' ? 'var(--success)' : 'var(--danger)';
+        n.innerText = msg;
+        c.appendChild(n);
+        setTimeout(() => n.remove(), 3000);
+    }
+</script>
+</body>
+</html>
