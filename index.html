@@ -591,15 +591,18 @@
         } catch(e) { showNotice("ERRORE AGGIORNAMENTO", "error"); }
     }
 
-    async function eliminaRecord(coll, id) {
-        if(confirm("ELIMINARE DEFINITIVAMENTE QUESTO RECORD?")) {
-            try {
-                await db.collection(coll).doc(id).delete();
-                logAction(`ELIMINAZIONE RECORD IN ${coll}`);
-                showNotice("ELIMINATO", "error");
-            } catch(e) { showNotice("ERRORE ELIMINAZIONE", "error"); }
+async function eliminaRecord(coll, id) {
+    // Richiama il modale personalizzato invece del sistema browser
+    customConfirm("SEI SICURO DI VOLER ELIMINARE DEFINITIVAMENTE QUESTO RECORD DAL DATABASE?", async () => {
+        try {
+            await db.collection(coll).doc(id).delete();
+            logAction(`ELIMINAZIONE RECORD IN ${coll}`);
+            showNotice("RECORD CANCELLATO CON SUCCESSO", "error");
+        } catch(e) { 
+            showNotice("ERRORE: ACCESSO NEGATO ALLA CANCELLAZIONE", "error");
         }
-    }
+    });
+}
 
     function showNotice(msg, type) {
         const c = document.getElementById('notification-container');
@@ -610,6 +613,39 @@
         c.appendChild(n);
         setTimeout(() => { if(n) n.remove(); }, 3000);
     }
+function customConfirm(messaggio, callback) {
+    const modal = document.getElementById('infoModal');
+    const body = document.getElementById('modalBody');
+    const title = document.getElementById('modalTitle');
+    
+    // Configurazione estetica del modale di avviso
+    title.innerText = "RICHIESTA AUTORIZZAZIONE LIVELLO 4";
+    title.style.color = "var(--danger)";
+    
+    body.innerHTML = `
+        <div style="text-align:center; padding: 20px 0;">
+            <p style="font-size: 1.2rem; color: #fff; margin-bottom: 30px;">${messaggio}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <button id="confirmYes" class="btn-danger" style="padding: 15px;">CONFERMA ELIMINAZIONE</button>
+                <button id="confirmNo" style="padding: 15px; border-color: #555;">ANNULLA</button>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    
+    // Gestione dei click
+    document.getElementById('confirmYes').onclick = () => {
+        callback();
+        closeModal();
+    };
+    
+    document.getElementById('confirmNo').onclick = () => {
+        closeModal();
+    };
+}
+    
 </script>
 </body>
 </html>
+
