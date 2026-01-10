@@ -292,11 +292,13 @@
     async function logAction(actionDescription) {
         const user = auth.currentUser;
         if (!user) return;
-        await db.collection("audit_logs").add({
-            email: user.email,
-            action: actionDescription,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        try {
+            await db.collection("audit_logs").add({
+                email: user.email,
+                action: actionDescription,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch(e) { console.error("Log error", e); }
     }
 
     auth.onAuthStateChanged(user => {
@@ -474,34 +476,40 @@
 
     document.getElementById('formDimissioni').addEventListener('submit', async (e) => {
         e.preventDefault();
-        await db.collection("dimissioni").add({
-            nome: document.getElementById('dimNome').value, grado: document.getElementById('dimGrado').value,
-            matricola: document.getElementById('dimMatricola').value,
-            dataArr: document.getElementById('dimData').value,
-            firma: document.getElementById('dimFirma').value,
-            stato: 'PENDENTE', timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showNotice("TRASMESSO", "success"); e.target.reset();
+        try {
+            await db.collection("dimissioni").add({
+                nome: document.getElementById('dimNome').value, grado: document.getElementById('dimGrado').value,
+                matricola: document.getElementById('dimMatricola').value,
+                dataArr: document.getElementById('dimData').value,
+                firma: document.getElementById('dimFirma').value,
+                stato: 'PENDENTE', timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showNotice("TRASMESSO", "success"); e.target.reset();
+        } catch(err) { showNotice("ERRORE DATABASE", "error"); }
     });
 
     document.getElementById('formFascicoli').addEventListener('submit', async (e) => {
         e.preventDefault();
-        await db.collection("fascicoli").add({
-            caso: document.getElementById('fasCaso').value, agenteResp: document.getElementById('fasAgenteResp').value,
-            prove: document.getElementById('fasProve').value, desc: document.getElementById('fasDesc').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showNotice("ARCHIVIATO", "success"); e.target.reset();
+        try {
+            await db.collection("fascicoli").add({
+                caso: document.getElementById('fasCaso').value, agenteResp: document.getElementById('fasAgenteResp').value,
+                prove: document.getElementById('fasProve').value, desc: document.getElementById('fasDesc').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showNotice("ARCHIVIATO", "success"); e.target.reset();
+        } catch(err) { showNotice("ERRORE DATABASE", "error"); }
     });
 
     document.getElementById('formCadetti').addEventListener('submit', async (e) => {
         e.preventDefault();
-        await db.collection("rapporti_cadetti").add({
-            cadetto: document.getElementById('cadNome').value, istruttore: document.getElementById('cadAgente').value,
-            esito: document.getElementById('cadRapporto').value, note: document.getElementById('cadDesc').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showNotice("REGISTRATO", "success"); e.target.reset();
+        try {
+            await db.collection("rapporti_cadetti").add({
+                cadetto: document.getElementById('cadNome').value, istruttore: document.getElementById('cadAgente').value,
+                esito: document.getElementById('cadRapporto').value, note: document.getElementById('cadDesc').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showNotice("REGISTRATO", "success"); e.target.reset();
+        } catch(err) { showNotice("ERRORE DATABASE", "error"); }
     });
 
     document.getElementById('formAddestramento').addEventListener('submit', async (e) => {
