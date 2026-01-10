@@ -289,145 +289,137 @@
     const EMAIL_ADMIN = "lspd-altocom@fusion.it";
     const EMAIL_GESTIONALE = "lspd-gestionale@fusion.it";
 
-// MODIFICA QUESTA FUNZIONE
-async function logAction(actionDescription) {
-    const user = auth.currentUser;
-    
-    // Se l'utente non è loggato, NON chiamare Firestore (evita l'errore 307)
-    if (!user) {
-        console.warn("Log annullato: Nessun utente autenticato.");
-        return;
+    // Funzione Log
+    async function logAction(actionDescription) {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        try {
+            await db.collection("audit_logs").add({
+                email: user.email,
+                action: actionDescription,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch(e) { 
+            console.error("Errore Log:", e.message); 
+        }
     }
 
-    try {
-        await db.collection("audit_logs").add({
-            email: user.email,
-            action: actionDescription,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    } catch(e) { 
-        // Se arrivi qui, le REGOLE sul sito di Firebase sono sbagliate
-        console.error("Errore critico Firestore Rules:", e.message); 
-    }
-}
+    // Gestione Stato Autenticazione
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            setupInterface(user.email);
+            logAction("UTENTE ONLINE");
+        } else {
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+    });
 
-// MODIFICA IL LISTENER DI STATO
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('mainApp').classList.remove('hidden');
-        
-        // Chiama il log SOLO ORA che l'utente è confermato
-        logAction("UTENTE ONLINE: " + user.email);
-        setupInterface(user.email);
-    } else {
-        document.getElementById('authSection').classList.remove('hidden');
-        document.getElementById('mainApp').classList.add('hidden');
-    }
-});
+    // Login
+    document.getElementById('loginForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPassword').value;
 
-document.getElementById('loginForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const pass = document.getElementById('loginPassword').value;
-
-    auth.signInWithEmailAndPassword(email, pass)
-        .then(() => {
-            // Se arriviamo qui, il login è riuscito e logAction verrà 
-            // chiamato automaticamente dal listener onAuthStateChanged
-            showNotice("ACCESSO AUTORIZZATO", "success");
-        })
-        .catch((error) => {
-            // Qui gestiamo l'errore 400
-            console.error("Login Fallito:", error.message);
-            showNotice("CREDENZIALI ERRATE O UTENTE INESISTENTE", "error");
-        });
-});
+        auth.signInWithEmailAndPassword(email, pass)
+            .then(() => {
+                showNotice("ACCESSO AUTORIZZATO", "success");
+            })
+            .catch((error) => {
+                showNotice("CREDENZIALI ERRATE", "error");
+            });
+    });
 
     function logout() { 
         logAction("LOGOUT EFFETTUATO");
         auth.signOut().then(() => {
-            document.getElementById('adminTabBtn').classList.add('hidden');
-            document.getElementById('addTabBtn').classList.add('hidden');
-            document.getElementById('tab-admin').classList.add('hidden');
-            document.getElementById('tab-dimissioni').classList.remove('hidden');
+            location.reload(); // Ricarica per pulire lo stato
         }); 
     }
 
-async function setupInterface(email) {
-    const user = auth.currentUser;
-    const isAdmin = email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
-    const isGestionale = email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase();
+    async function setupInterface(email) {
+        const isAdmin = email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
+        const isGestionale = email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase();
 
-    // 🔑 FORZA il token prima di Firestore
-    await user.getIdToken(true);
-
-    if (isAdmin) {
-        document.getElementById('adminTabBtn').classList.remove('hidden');
-        document.getElementById('card-accessi-speciali')?.classList.remove('hidden');
-        caricaDatiAdmin(); // ⬅️ SOLO ORA
-    } else {
+        // UI Reset
         document.getElementById('adminTabBtn').classList.add('hidden');
-        document.getElementById('tab-admin').classList.add('hidden');
+        document.getElementById('addTabBtn').classList.add('hidden');
+        const specialCard = document.getElementById('card-accessi-speciali');
+        if(specialCard) specialCard.classList.add('hidden');
+
+        if (isAdmin) {
+            document.getElementById('adminTabBtn').classList.remove('hidden');
+            if(specialCard) specialCard.classList.remove('hidden');
+            caricaDatiAdmin();
+        }
+
+        if (isAdmin || isGestionale) {
+            document.getElementById('addTabBtn').classList.remove('hidden');
+        }
+
+        document.getElementById('userRoleDisplay').innerText =
+            isAdmin ? "ACCESSO ALTO COMANDO"
+            : isGestionale ? "ACCESSO GESTIONALE"
+            : "ACCESSO AGENTE";
     }
-
-    if (isAdmin || isGestionale) {
-        document.getElementById('addTabBtn').classList.remove('hidden');
-    }
-
-    document.getElementById('userRoleDisplay').innerText =
-        isAdmin ? "ACCESSO ALTO COMANDO"
-        : isGestionale ? "ACCESSO GESTIONALE"
-        : "ACCESSO AGENTE";
-}
-
 
     function switchTab(tab) {
         const user = auth.currentUser;
-        const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
-        const isGestionale = user && user.email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase();
+        const email = user ? user.email.toLowerCase() : "";
+        const isAdmin = email === EMAIL_ADMIN.toLowerCase();
+        const isGestionale = email === EMAIL_GESTIONALE.toLowerCase();
         
-        if (tab === 'admin' && !isAdmin) {
-            showNotice("ACCESSO NEGATO", "error");
-            return;
-        }
-        if (tab === 'addestramenti' && !isAdmin && !isGestionale) {
-            showNotice("ACCESSO NEGATO", "error");
-            return;
-        }
+        if (tab === 'admin' && !isAdmin) return;
+        if (tab === 'addestramenti' && !isAdmin && !isGestionale) return;
 
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.remove('hidden');
         
-        const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
-        if(activeBtn) activeBtn.classList.add('active');
+        const targetTab = document.getElementById('tab-' + tab);
+        if(targetTab) targetTab.classList.remove('hidden');
+        
+        // Trova il bottone corretto per attivarlo
+        const buttons = document.querySelectorAll('.nav-btn');
+        buttons.forEach(btn => {
+            if(btn.getAttribute('onclick').includes(`'${tab}'`)) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     async function showDetails(coll, id) {
-        const doc = await db.collection(coll).doc(id).get();
-        if(!doc.exists) return;
-        const d = doc.data();
-        let content = "";
-        if(coll === 'dimissioni') {
-            content = `<p><b>SOGGETTO:</b> ${d.nome}</p><p><b>GRADO:</b> ${d.grado}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>DATA:</b> ${d.dataArr}</p><p><b>FIRMA:</b> ${d.firma}</p>`;
-        } else if(coll === 'fascicoli') {
-            content = `<p><b>CASO:</b> ${d.caso}</p><p><b>RESPONSABILE:</b> ${d.agenteResp}</p><p><b>PROVE:</b> ${d.prove || 'Nessuna'}</p><p><b>REPORT:</b><br>${d.desc}</p>`;
-        } else if(coll === 'rapporti_cadetti') {
-            content = `<p><b>CADETTO:</b> ${d.cadetto}</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p><p><b>ESITO:</b> ${d.esito}</p><p><b>NOTE:</b><br>${d.note}</p>`;
-        } else if(coll === 'addestramenti') {
-            content = `<p><b>AGENTE:</b> ${d.agente}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>ADDESTRAMENTO:</b> ${d.tipo}</p><p><b>VOTO:</b> ${d.voto}/10</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p>`;
+        try {
+            const doc = await db.collection(coll).doc(id).get();
+            if(!doc.exists) return;
+            const d = doc.data();
+            let content = "";
+            if(coll === 'dimissioni') {
+                content = `<p><b>SOGGETTO:</b> ${d.nome}</p><p><b>GRADO:</b> ${d.grado}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>DATA:</b> ${d.dataArr}</p><p><b>FIRMA:</b> ${d.firma}</p>`;
+            } else if(coll === 'fascicoli') {
+                content = `<p><b>CASO:</b> ${d.caso}</p><p><b>RESPONSABILE:</b> ${d.agenteResp}</p><p><b>PROVE:</b> ${d.prove || 'Nessuna'}</p><p><b>REPORT:</b><br>${d.desc}</p>`;
+            } else if(coll === 'rapporti_cadetti') {
+                content = `<p><b>CADETTO:</b> ${d.cadetto}</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p><p><b>ESITO:</b> ${d.esito}</p><p><b>NOTE:</b><br>${d.note}</p>`;
+            } else if(coll === 'addestramenti') {
+                content = `<p><b>AGENTE:</b> ${d.agente}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>ADDESTRAMENTO:</b> ${d.tipo}</p><p><b>VOTO:</b> ${d.voto}/10</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p>`;
+            }
+            document.getElementById('modalBody').innerHTML = content;
+            document.getElementById('modalTitle').innerText = coll.replace('_', ' ').toUpperCase();
+            document.getElementById('infoModal').classList.remove('hidden');
+        } catch (e) {
+            showNotice("ERRORE CARICAMENTO DETTAGLI", "error");
         }
-        document.getElementById('modalBody').innerHTML = content;
-        document.getElementById('modalTitle').innerText = coll.toUpperCase();
-        document.getElementById('infoModal').classList.remove('hidden');
     }
 
     function closeModal() { document.getElementById('infoModal').classList.add('hidden'); }
 
     function caricaDatiAdmin() {
+        // Logs
         db.collection("audit_logs").orderBy("timestamp", "desc").limit(50).onSnapshot(snap => {
             const consoleBox = document.getElementById('admin-logs-console');
+            if(!consoleBox) return;
             consoleBox.innerHTML = "";
             snap.forEach(doc => {
                 const l = doc.data();
@@ -436,8 +428,10 @@ async function setupInterface(email) {
             });
         });
 
+        // Dimissioni Pendenti
         db.collection("dimissioni").where("stato", "==", "PENDENTE").onSnapshot(snap => {
             const container = document.getElementById('admin-dimissioni-list');
+            if(!container) return;
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
@@ -452,8 +446,10 @@ async function setupInterface(email) {
             });
         });
 
+        // Storico Dimissioni
         db.collection("dimissioni").where("stato", "==", "ACCETTATA").onSnapshot(snap => {
             const container = document.getElementById('admin-dimissioni-evase-list');
+            if(!container) return;
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
@@ -467,8 +463,10 @@ async function setupInterface(email) {
             });
         });
 
+        // Addestramenti
         db.collection("addestramenti").orderBy("timestamp", "desc").onSnapshot(snap => {
             const container = document.getElementById('admin-add-list');
+            if(!container) return;
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
@@ -483,8 +481,10 @@ async function setupInterface(email) {
             });
         });
 
+        // Fascicoli
         db.collection("fascicoli").orderBy("timestamp", "desc").onSnapshot(snap => {
             const container = document.getElementById('admin-fascicoli-list');
+            if(!container) return;
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
@@ -499,8 +499,10 @@ async function setupInterface(email) {
             });
         });
 
+        // Cadetti
         db.collection("rapporti_cadetti").onSnapshot(snap => {
             const container = document.getElementById('admin-cadetti-list');
+            if(!container) return;
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
@@ -516,15 +518,18 @@ async function setupInterface(email) {
         });
     }
 
+    // Form Submissions
     document.getElementById('formDimissioni').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
             await db.collection("dimissioni").add({
-                nome: document.getElementById('dimNome').value, grado: document.getElementById('dimGrado').value,
+                nome: document.getElementById('dimNome').value, 
+                grado: document.getElementById('dimGrado').value,
                 matricola: document.getElementById('dimMatricola').value,
                 dataArr: document.getElementById('dimData').value,
                 firma: document.getElementById('dimFirma').value,
-                stato: 'PENDENTE', timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                stato: 'PENDENTE', 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             showNotice("TRASMESSO", "success"); e.target.reset();
         } catch(err) { showNotice("ERRORE DATABASE", "error"); }
@@ -534,8 +539,10 @@ async function setupInterface(email) {
         e.preventDefault();
         try {
             await db.collection("fascicoli").add({
-                caso: document.getElementById('fasCaso').value, agenteResp: document.getElementById('fasAgenteResp').value,
-                prove: document.getElementById('fasProve').value, desc: document.getElementById('fasDesc').value,
+                caso: document.getElementById('fasCaso').value, 
+                agenteResp: document.getElementById('fasAgenteResp').value,
+                prove: document.getElementById('fasProve').value, 
+                desc: document.getElementById('fasDesc').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             showNotice("ARCHIVIATO", "success"); e.target.reset();
@@ -546,48 +553,51 @@ async function setupInterface(email) {
         e.preventDefault();
         try {
             await db.collection("rapporti_cadetti").add({
-                cadetto: document.getElementById('cadNome').value, istruttore: document.getElementById('cadAgente').value,
-                esito: document.getElementById('cadRapporto').value, note: document.getElementById('cadDesc').value,
+                cadetto: document.getElementById('cadNome').value, 
+                istruttore: document.getElementById('cadAgente').value,
+                esito: document.getElementById('cadRapporto').value, 
+                note: document.getElementById('cadDesc').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             showNotice("REGISTRATO", "success"); e.target.reset();
         } catch(err) { showNotice("ERRORE DATABASE", "error"); }
     });
 
-document.getElementById('formAddestramento').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-        // 1. Prova a scrivere l'addestramento
-        await db.collection("addestramenti").add({
-            agente: document.getElementById('addNome').value,
-            matricola: document.getElementById('addMatricola').value,
-            tipo: document.getElementById('addTipo').value,
-            voto: document.getElementById('addVoto').value,
-            istruttore: document.getElementById('addFirma').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 2. Prova a scrivere il log (riga 310)
-        await logAction("ADDESTRAMENTO REGISTRATO: " + document.getElementById('addNome').value);
-        
-        showNotice("REGISTRATO CON SUCCESSO", "success");
-        e.target.reset();
-    } catch(err) {
-        console.error("Errore Modulo Addestramento:", err.message);
-        showNotice("ERRORE PERMESSI O DATABASE", "error");
-    }
-});
+    document.getElementById('formAddestramento').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const nome = document.getElementById('addNome').value;
+            await db.collection("addestramenti").add({
+                agente: nome,
+                matricola: document.getElementById('addMatricola').value,
+                tipo: document.getElementById('addTipo').value,
+                voto: document.getElementById('addVoto').value,
+                istruttore: document.getElementById('addFirma').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            logAction("ADDESTRAMENTO REGISTRATO: " + nome);
+            showNotice("REGISTRATO CON SUCCESSO", "success");
+            e.target.reset();
+        } catch(err) {
+            showNotice("ERRORE PERMESSI", "error");
+        }
+    });
+
     async function aggiornaStato(coll, id, nuovoStato) {
-        await db.collection(coll).doc(id).update({ stato: nuovoStato });
-        logAction(`STATO AGGIORNATO IN ${coll}: ${id}`);
-        showNotice("AGGIORNATO", "success");
+        try {
+            await db.collection(coll).doc(id).update({ stato: nuovoStato });
+            logAction(`STATO AGGIORNATO IN ${coll}: ${nuovoStato}`);
+            showNotice("AGGIORNATO", "success");
+        } catch(e) { showNotice("ERRORE AGGIORNAMENTO", "error"); }
     }
 
     async function eliminaRecord(coll, id) {
         if(confirm("ELIMINARE DEFINITIVAMENTE QUESTO RECORD?")) {
-            await db.collection(coll).doc(id).delete();
-            logAction(`ELIMINAZIONE RECORD IN ${coll}: ${id}`);
-            showNotice("ELIMINATO", "error");
+            try {
+                await db.collection(coll).doc(id).delete();
+                logAction(`ELIMINAZIONE RECORD IN ${coll}`);
+                showNotice("ELIMINATO", "error");
+            } catch(e) { showNotice("ERRORE ELIMINAZIONE", "error"); }
         }
     }
 
@@ -598,13 +608,8 @@ document.getElementById('formAddestramento').addEventListener('submit', async (e
         n.style.borderColor = type === 'success' ? 'var(--success)' : 'var(--danger)';
         n.innerText = msg;
         c.appendChild(n);
-        setTimeout(() => n.remove(), 3000);
+        setTimeout(() => { if(n) n.remove(); }, 3000);
     }
 </script>
 </body>
 </html>
-
-
-
-
-
