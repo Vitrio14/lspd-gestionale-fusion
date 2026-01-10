@@ -24,7 +24,6 @@
         .container { width: 95%; max-width: 1200px; background: rgba(13, 17, 23, 0.95); border: 1px solid var(--border-blue); padding: 25px; margin: 20px 0; backdrop-filter: blur(10px); box-shadow: 0 0 20px var(--neon-glow); position: relative; flex: 1; }
         .hidden { display: none !important; }
         
-        /* SISTEMA TABELLE MODERNO - ALLINEAMENTO FISSO */
         .data-row { 
             display: grid; 
             grid-template-columns: 2fr 1fr 1fr; 
@@ -61,7 +60,6 @@
         .btn-danger { border-color: var(--danger); color: var(--danger); }
         .btn-success { border-color: var(--success); color: var(--success); }
 
-        /* FOOTER */
         .main-footer {
             width: 100%;
             padding: 30px 0;
@@ -71,13 +69,24 @@
             margin-top: auto;
         }
 
-        /* MODAL */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 10000; }
         .modal-content { background: #0a0d12; border: 2px solid var(--police-blue); width: 90%; max-width: 600px; padding: 30px; box-shadow: 0 0 30px var(--police-blue); }
 
         #notification-container { position: fixed; top: 30px; right: 30px; z-index: 10001; }
         .notice { background: rgba(13, 17, 23, 0.9); border-left: 5px solid var(--police-blue); color: #fff; padding: 15px 25px; font-family: 'Orbitron'; font-size: 0.75rem; margin-bottom: 10px; animation: slideIn 0.3s; }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        
+        .log-console {
+            background: #000;
+            border: 1px solid #333;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 0.7rem;
+            height: 200px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -117,6 +126,7 @@
         <button class="nav-btn" onclick="switchTab('fascicoli')">Fascicoli</button>
         <button class="nav-btn" onclick="switchTab('cadetti')">Cadetti</button>
         <button id="adminTabBtn" class="nav-btn hidden" onclick="switchTab('admin')">Alto Comando</button>
+        <button class="nav-btn" onclick="switchTab('protocollo')">Protocollo</button> 
     </div>
 
     <div id="tab-dimissioni" class="tab-content">
@@ -159,6 +169,11 @@
         </form>
     </div>
 
+    <div id="tab-protocollo" class="tab-content hidden">
+        <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[!] PROTOCOLLO OPERATIVO</h3>
+        <p>In questa sezione verranno inseriti i protocolli e i codici di condotta LSPD.</p>
+    </div>
+
     <div id="tab-admin" class="tab-content hidden">
         <div style="border-left: 4px solid var(--danger); padding:20px; background: rgba(255,0,0,0.02);">
             <h2 style="font-family:'Orbitron'; color:var(--danger); font-size:1rem; margin-top:0;">REVISIONE ALTO COMANDO</h2>
@@ -170,10 +185,10 @@
             </section>
 
             <section style="margin-bottom:30px;">
-    <h4 style="color:rgba(255,255,255,0.5);">STORICO DIMISSIONI EVASE</h4>
-    <div class="data-header"><span>Soggetto</span><span>Grado</span><span>Esito</span></div>
-    <div id="admin-dimissioni-evase-list"></div>
-</section>
+                <h4 style="color:rgba(255,255,255,0.5);">STORICO DIMISSIONI EVASE</h4>
+                <div class="data-header"><span>Soggetto</span><span>Grado</span><span>Esito</span></div>
+                <div id="admin-dimissioni-evase-list"></div>
+            </section>
 
             <section style="margin-bottom:30px;">
                 <h4 style="color:var(--police-accent); border-bottom:1px solid #333;">RECAP FASCICOLI</h4>
@@ -181,10 +196,15 @@
                 <div id="admin-fascicoli-list"></div>
             </section>
 
-            <section>
+            <section style="margin-bottom:20px;">
                 <h4 style="color:var(--success); border-bottom:1px solid #333;">REVISIONE CADETTI</h4>
                 <div class="data-header"><span>Soggetto</span><span>Esito</span><span>Azione</span></div>
                 <div id="admin-cadetti-list"></div>
+            </section>
+
+            <section>
+                <h4 style="color:var(--police-blue); border-bottom:1px solid #333;">LOG ACCESSI E MODIFICHE (TUTTO)</h4>
+                <div id="admin-logs-console" class="log-console">Caricamento tracciati...</div>
             </section>
         </div>
     </div>
@@ -201,6 +221,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // CREDENZIALI INTEGRATE
     const firebaseConfig = {
         apiKey: "AIzaSyDfIW4GjBZ4QGPvfJtzLAr34VxDRLzcU6M",
         authDomain: "lspd-portal-d34b0.firebaseapp.com",
@@ -215,10 +236,21 @@
     const db = firebase.firestore();
     const EMAIL_ADMIN = "lspd-altocom@fusion.it";
 
+    async function logAction(actionDescription) {
+        const user = auth.currentUser;
+        if (!user) return;
+        await db.collection("audit_logs").add({
+            email: user.email,
+            action: actionDescription,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
+            logAction("LOGIN EFFETTUATO");
             setupInterface(user.email);
         } else {
             document.getElementById('authSection').classList.remove('hidden');
@@ -233,63 +265,52 @@
     });
 
     function logout() { 
-    auth.signOut().then(() => {
-        // Reset interfaccia
-        document.getElementById('adminTabBtn').classList.add('hidden');
-        document.getElementById('tab-admin').classList.add('hidden');
-        document.getElementById('tab-dimissioni').classList.remove('hidden'); // Torna alla home
-        
-        // Svuota le liste admin per sicurezza
-        document.getElementById('admin-dimissioni-list').innerHTML = "";
-        document.getElementById('admin-dimissioni-evase-list').innerHTML = "";
-        document.getElementById('admin-fascicoli-list').innerHTML = "";
-        document.getElementById('admin-cadetti-list').innerHTML = "";
-    }); 
-}
-
-function setupInterface(email) {
-    const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
-    
-    // Se NON è admin, forza la chiusura della tab admin se era rimasta aperta
-    if (!isAdmin) {
-        document.getElementById('tab-admin').classList.add('hidden');
-        document.getElementById('adminTabBtn').classList.add('hidden');
-        switchTab('dimissioni'); // Forza il ritorno alla sezione civile
-    } else {
-        document.getElementById('adminTabBtn').classList.remove('hidden');
-        caricaDatiAdmin();
+        logAction("LOGOUT EFFETTUATO");
+        auth.signOut().then(() => {
+            document.getElementById('adminTabBtn').classList.add('hidden');
+            document.getElementById('tab-admin').classList.add('hidden');
+            document.getElementById('tab-dimissioni').classList.remove('hidden');
+            document.getElementById('admin-dimissioni-list').innerHTML = "";
+            document.getElementById('admin-dimissioni-evase-list').innerHTML = "";
+            document.getElementById('admin-fascicoli-list').innerHTML = "";
+            document.getElementById('admin-cadetti-list').innerHTML = "";
+        }); 
     }
 
-    document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
-}
-function switchTab(tab) {
-    const user = auth.currentUser;
-    const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
-
-    // Blocca l'accesso alla tab admin se non si è admin
-    if (tab === 'admin' && !isAdmin) {
-        showNotice("ACCESSO NEGATO: AREA RISERVATA", "error");
-        return;
+    function setupInterface(email) {
+        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+        if (!isAdmin) {
+            document.getElementById('tab-admin').classList.add('hidden');
+            document.getElementById('adminTabBtn').classList.add('hidden');
+            switchTab('dimissioni');
+        } else {
+            document.getElementById('adminTabBtn').classList.remove('hidden');
+            caricaDatiAdmin();
+        }
+        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
     }
 
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    
-    document.getElementById('tab-' + tab).classList.remove('hidden');
-    
-    // Gestione focus bottone (funziona anche se chiamato da switchTab diretto)
-    const activeBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                           .find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
-    if(activeBtn) activeBtn.classList.add('active');
-}
+    function switchTab(tab) {
+        const user = auth.currentUser;
+        const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
+        if (tab === 'admin' && !isAdmin) {
+            showNotice("ACCESSO NEGATO: AREA RISERVATA", "error");
+            return;
+        }
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+        const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
+        if(activeBtn) activeBtn.classList.add('active');
+        logAction("ACCESSO ALLA SEZIONE: " + tab.toUpperCase());
+    }
 
-    // --- MODAL & FIREBASE LOGIC ---
     async function showDetails(coll, id) {
+        logAction("VISUALIZZATI DETTAGLI [" + coll.toUpperCase() + "] ID: " + id);
         const doc = await db.collection(coll).doc(id).get();
         if(!doc.exists) return;
         const d = doc.data();
         let content = "";
-        
         if(coll === 'dimissioni') {
             content = `<p><b>SOGGETTO:</b> ${d.nome}</p><p><b>GRADO:</b> ${d.grado}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>DATA:</b> ${d.dataArr}</p><p><b>FIRMA:</b> ${d.firma}</p>`;
         } else if(coll === 'fascicoli') {
@@ -297,7 +318,6 @@ function switchTab(tab) {
         } else if(coll === 'rapporti_cadetti') {
             content = `<p><b>CADETTO:</b> ${d.cadetto}</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p><p><b>ESITO:</b> ${d.esito}</p><p><b>NOTE:</b><br>${d.note}</p>`;
         }
-
         document.getElementById('modalBody').innerHTML = content;
         document.getElementById('modalTitle').innerText = coll.toUpperCase();
         document.getElementById('infoModal').classList.remove('hidden');
@@ -305,108 +325,117 @@ function switchTab(tab) {
 
     function closeModal() { document.getElementById('infoModal').classList.add('hidden'); }
 
-function caricaDatiAdmin() {
-    // 1. Dimissioni PENDENTI (con tasti azione)
-    db.collection("dimissioni").where("stato", "==", "PENDENTE").onSnapshot(snap => {
-        const container = document.getElementById('admin-dimissioni-list');
-        container.innerHTML = "";
-        snap.forEach(doc => {
-            const d = doc.data();
-            container.innerHTML += `<div class="data-row">
-                <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">🔍 <b>${d.nome}</b></span>
-                <span>${d.grado}</span>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="aggiornaStato('dimissioni', '${doc.id}', 'ACCETTATA')" class="btn-success">OK</button>
-                    <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger">X</button>
-                </div>
-            </div>`;
+    function caricaDatiAdmin() {
+        db.collection("audit_logs").orderBy("timestamp", "desc").limit(50).onSnapshot(snap => {
+            const consoleBox = document.getElementById('admin-logs-console');
+            consoleBox.innerHTML = "";
+            snap.forEach(doc => {
+                const l = doc.data();
+                const time = l.timestamp ? l.timestamp.toDate().toLocaleTimeString() : "...";
+                consoleBox.innerHTML += `<div>[${time}] <span style="color:#ffd700">${l.email}</span>: ${l.action}</div>`;
+            });
         });
-    });
 
-    // 2. NUOVO: Dimissioni EVASE (Sola lettura/Eliminazione)
-    db.collection("dimissioni").where("stato", "==", "ACCETTATA").onSnapshot(snap => {
-        const container = document.getElementById('admin-dimissioni-evase-list');
-        container.innerHTML = "";
-        snap.forEach(doc => {
-            const d = doc.data();
-            container.innerHTML += `<div class="data-row" style="opacity: 0.7; border-color: rgba(0, 255, 136, 0.2);">
-                <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
-                <span>${d.grado}</span>
-                <div style="display:flex; gap:5px;">
-                    <span style="color:var(--success); font-size:0.6rem; font-family:'Orbitron';">EVASA</span>
-                    <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger" style="padding:2px 6px; font-size:0.5rem;">ELIMINA</button>
-                </div>
-            </div>`;
+        db.collection("dimissioni").where("stato", "==", "PENDENTE").onSnapshot(snap => {
+            const container = document.getElementById('admin-dimissioni-list');
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div class="data-row">
+                    <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">🔍 <b>${d.nome}</b></span>
+                    <span>${d.grado}</span>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="aggiornaStato('dimissioni', '${doc.id}', 'ACCETTATA')" class="btn-success">OK</button>
+                        <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger">X</button>
+                    </div>
+                </div>`;
+            });
         });
-    });
 
-    // 3. Fascicoli
-    db.collection("fascicoli").orderBy("timestamp", "desc").onSnapshot(snap => {
-        const container = document.getElementById('admin-fascicoli-list');
-        container.innerHTML = "";
-        snap.forEach(doc => {
-            const d = doc.data();
-            container.innerHTML += `<div class="data-row"><span>${d.caso}</span><span>${d.agenteResp}</span><button onclick="showDetails('fascicoli', '${doc.id}')">Vedi</button></div>`;
+        db.collection("dimissioni").where("stato", "==", "ACCETTATA").onSnapshot(snap => {
+            const container = document.getElementById('admin-dimissioni-evase-list');
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div class="data-row" style="opacity: 0.7; border-color: rgba(0, 255, 136, 0.2);">
+                    <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
+                    <span>${d.grado}</span>
+                    <div style="display:flex; gap:5px;">
+                        <span style="color:var(--success); font-size:0.6rem; font-family:'Orbitron';">EVASA</span>
+                        <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger" style="padding:2px 6px; font-size:0.5rem;">ELIMINA</button>
+                    </div>
+                </div>`;
+            });
         });
-    });
 
-    // 4. Cadetti
-    db.collection("rapporti_cadetti").onSnapshot(snap => {
-        const container = document.getElementById('admin-cadetti-list');
-        container.innerHTML = "";
-        snap.forEach(doc => {
-            const d = doc.data();
-            container.innerHTML += `<div class="data-row"><span>${d.cadetto}</span><span style="color:${d.esito === 'Positivo' ? 'var(--success)' : 'var(--danger)'}">${d.esito}</span><button onclick="showDetails('rapporti_cadetti', '${doc.id}')">Dettagli</button></div>`;
+        db.collection("fascicoli").orderBy("timestamp", "desc").onSnapshot(snap => {
+            const container = document.getElementById('admin-fascicoli-list');
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div class="data-row"><span>${d.caso}</span><span>${d.agenteResp}</span><button onclick="showDetails('fascicoli', '${doc.id}')">Vedi</button></div>`;
+            });
         });
-    });
-}
 
-    // --- FORM SUBMIT HANDLERS ---
+        db.collection("rapporti_cadetti").onSnapshot(snap => {
+            const container = document.getElementById('admin-cadetti-list');
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div class="data-row"><span>${d.cadetto}</span><span style="color:${d.esito === 'Positivo' ? 'var(--success)' : 'var(--danger)'}">${d.esito}</span><button onclick="showDetails('rapporti_cadetti', '${doc.id}')">Dettagli</button></div>`;
+            });
+        });
+    }
+
     document.getElementById('formDimissioni').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const nome = document.getElementById('dimNome').value;
         await db.collection("dimissioni").add({
-            nome: document.getElementById('dimNome').value,
-            grado: document.getElementById('dimGrado').value,
+            nome: nome, grado: document.getElementById('dimGrado').value,
             matricola: document.getElementById('dimMatricola').value,
             dataArr: document.getElementById('dimData').value,
             firma: document.getElementById('dimFirma').value,
-            stato: 'PENDENTE',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            stato: 'PENDENTE', timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
+        logAction("INVIATE DIMISSIONI PER: " + nome);
         showNotice("TRASMESSO", "success"); e.target.reset();
     });
 
     document.getElementById('formFascicoli').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const caso = document.getElementById('fasCaso').value;
         await db.collection("fascicoli").add({
-            caso: document.getElementById('fasCaso').value,
-            agenteResp: document.getElementById('fasAgenteResp').value,
+            caso: caso, agenteResp: document.getElementById('fasAgenteResp').value,
             prove: document.getElementById('fasProve').value,
             desc: document.getElementById('fasDesc').value,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
+        logAction("ARCHIVIATO NUOVO FASCICOLO: " + caso);
         showNotice("ARCHIVIATO", "success"); e.target.reset();
     });
 
     document.getElementById('formCadetti').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const cad = document.getElementById('cadNome').value;
         await db.collection("rapporti_cadetti").add({
-            cadetto: document.getElementById('cadNome').value,
-            istruttore: document.getElementById('cadAgente').value,
+            cadetto: cad, istruttore: document.getElementById('cadAgente').value,
             esito: document.getElementById('cadRapporto').value,
             note: document.getElementById('cadDesc').value,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
+        logAction("REGISTRATA VALUTAZIONE CADETTO: " + cad);
         showNotice("REGISTRATO", "success"); e.target.reset();
     });
 
     async function aggiornaStato(coll, id, nuovoStato) {
         await db.collection(coll).doc(id).update({ stato: nuovoStato });
+        logAction("CAMBIATO STATO RECORD [" + coll.toUpperCase() + "] IN: " + nuovoStato);
         showNotice("AGGIORNATO", "success");
     }
 
     async function eliminaRecord(coll, id) {
         if(confirm("ELIMINARE DEFINITIVAMENTE?")) {
+            logAction("ELIMINATO RECORD [" + coll.toUpperCase() + "] ID: " + id);
             await db.collection(coll).doc(id).delete();
             showNotice("ELIMINATO", "error");
         }
@@ -423,5 +452,4 @@ function caricaDatiAdmin() {
     }
 </script>
 </body>
-
 </html>
