@@ -245,13 +245,13 @@
 
             <section style="margin-bottom:30px;">
                 <h4 style="color:var(--police-accent); border-bottom:1px solid #333;">RECAP FASCICOLI</h4>
-                <div class="data-header"><span>Caso</span><span>Responsabile</span><span>Vedi</span></div>
+                <div class="data-header"><span>Caso</span><span>Responsabile</span><span>Gestione</span></div>
                 <div id="admin-fascicoli-list"></div>
             </section>
 
             <section style="margin-bottom:20px;">
                 <h4 style="color:var(--success); border-bottom:1px solid #333;">REVISIONE CADETTI</h4>
-                <div class="data-header"><span>Soggetto</span><span>Esito</span><span>Azione</span></div>
+                <div class="data-header"><span>Soggetto</span><span>Esito</span><span>Gestione</span></div>
                 <div id="admin-cadetti-list"></div>
             </section>
 
@@ -374,6 +374,7 @@
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + tab).classList.remove('hidden');
+        
         const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
         if(activeBtn) activeBtn.classList.add('active');
     }
@@ -434,7 +435,9 @@
                 container.innerHTML += `<div class="data-row" style="opacity: 0.7; border-color: rgba(0, 255, 136, 0.2);">
                     <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
                     <span>${d.grado}</span>
-                    <div style="display:flex; gap:5px;"><span style="color:var(--success); font-size:0.6rem;">EVASA</span></div>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger">Elimina</button>
+                    </div>
                 </div>`;
             });
         });
@@ -460,7 +463,14 @@
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
-                container.innerHTML += `<div class="data-row"><span>${d.caso}</span><span>${d.agenteResp}</span><button onclick="showDetails('fascicoli', '${doc.id}')">Vedi</button></div>`;
+                container.innerHTML += `<div class="data-row">
+                    <span>${d.caso}</span>
+                    <span>${d.agenteResp}</span>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="showDetails('fascicoli', '${doc.id}')">Vedi</button>
+                        <button onclick="eliminaRecord('fascicoli', '${doc.id}')" class="btn-danger">X</button>
+                    </div>
+                </div>`;
             });
         });
 
@@ -469,7 +479,14 @@
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
-                container.innerHTML += `<div class="data-row"><span>${d.cadetto}</span><span style="color:${d.esito === 'Positivo' ? 'var(--success)' : 'var(--danger)'}">${d.esito}</span><button onclick="showDetails('rapporti_cadetti', '${doc.id}')">Dettagli</button></div>`;
+                container.innerHTML += `<div class="data-row">
+                    <span>${d.cadetto}</span>
+                    <span style="color:${d.esito === 'Positivo' ? 'var(--success)' : 'var(--danger)'}">${d.esito}</span>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="showDetails('rapporti_cadetti', '${doc.id}')">Vedi</button>
+                        <button onclick="eliminaRecord('rapporti_cadetti', '${doc.id}')" class="btn-danger">X</button>
+                    </div>
+                </div>`;
             });
         });
     }
@@ -533,12 +550,14 @@
 
     async function aggiornaStato(coll, id, nuovoStato) {
         await db.collection(coll).doc(id).update({ stato: nuovoStato });
+        logAction(`STATO AGGIORNATO IN ${coll}: ${id}`);
         showNotice("AGGIORNATO", "success");
     }
 
     async function eliminaRecord(coll, id) {
-        if(confirm("ELIMINARE DEFINITIVAMENTE?")) {
+        if(confirm("ELIMINARE DEFINITIVAMENTE QUESTO RECORD?")) {
             await db.collection(coll).doc(id).delete();
+            logAction(`ELIMINAZIONE RECORD IN ${coll}: ${id}`);
             showNotice("ELIMINATO", "error");
         }
     }
@@ -552,19 +571,6 @@
         c.appendChild(n);
         setTimeout(() => n.remove(), 3000);
     }
-
-    document.addEventListener('contextmenu', event => {
-        event.preventDefault();
-        showNotice("ACCESSO NEGATO: TASTO DESTRO DISABILITATO", "error");
-    });
-
-    document.onkeydown = function(e) {
-        if(e.keyCode == 123) { showNotice("PROTOCOLLO DI SICUREZZA: F12 BLOCCATO", "error"); return false; }
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { showNotice("TENTATIVO DI VIOLAZIONE RILEVATO", "error"); return false; }
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { showNotice("ACCESSO CONSOLE NEGATO", "error"); return false; }
-        if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { showNotice("SORGENTE CRIPTATA - ACCESSO NEGATO", "error"); return false; }
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { showNotice("SISTEMA DI PROTEZIONE ATTIVO", "error"); return false; }
-    };
 </script>
 </body>
 </html>
