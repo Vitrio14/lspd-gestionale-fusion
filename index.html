@@ -320,11 +320,23 @@ async function logAction(actionDescription) {
         }
     });
 
-    document.getElementById('loginForm').addEventListener('submit', e => {
-        e.preventDefault();
-        auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)
-            .catch(() => showNotice("CREDENTIALS ERROR", "error"));
-    });
+document.getElementById('loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPassword').value;
+
+    auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+            // Se arriviamo qui, il login è riuscito e logAction verrà 
+            // chiamato automaticamente dal listener onAuthStateChanged
+            showNotice("ACCESSO AUTORIZZATO", "success");
+        })
+        .catch((error) => {
+            // Qui gestiamo l'errore 400
+            console.error("Login Fallito:", error.message);
+            showNotice("CREDENZIALI ERRATE O UTENTE INESISTENTE", "error");
+        });
+});
 
     function logout() { 
         logAction("LOGOUT EFFETTUATO");
@@ -581,4 +593,5 @@ async function logAction(actionDescription) {
 </script>
 </body>
 </html>
+
 
