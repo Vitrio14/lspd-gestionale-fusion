@@ -289,17 +289,24 @@
     const EMAIL_ADMIN = "lspd-altocom@fusion.it";
     const EMAIL_GESTIONALE = "lspd-gestionale@fusion.it";
 
-    async function logAction(actionDescription) {
-        const user = auth.currentUser;
-        if (!user) return;
-        try {
-            await db.collection("audit_logs").add({
-                email: user.email,
-                action: actionDescription,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch(e) { console.error("Log error", e); }
+async function logAction(actionDescription) {
+    const user = auth.currentUser;
+    // Se non c'è un utente o l'email non è ancora disponibile, annulla il log
+    if (!user || !user.email) {
+        console.warn("Log saltato: Utente non autenticato.");
+        return;
     }
+
+    try {
+        await db.collection("audit_logs").add({
+            email: user.email.toLowerCase(), // Forza minuscolo per coerenza con le regole
+            action: actionDescription,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch(e) { 
+        console.error("Errore di permessi nel Log:", e.message); 
+    }
+}
 
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -574,3 +581,4 @@
 </script>
 </body>
 </html>
+
