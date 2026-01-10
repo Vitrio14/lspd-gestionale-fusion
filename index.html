@@ -132,6 +132,7 @@
         <button class="nav-btn active" onclick="switchTab('dimissioni')">Dimissioni</button>
         <button class="nav-btn" onclick="switchTab('fascicoli')">Fascicoli</button>
         <button class="nav-btn" onclick="switchTab('cadetti')">Cadetti</button>
+        <button id="addTabBtn" class="nav-btn hidden" onclick="switchTab('addestramenti')">Addestramento</button>
         <button id="adminTabBtn" class="nav-btn hidden" onclick="switchTab('admin')">Alto Comando</button>
         <button class="nav-btn" onclick="switchTab('protocollo')">Protocollo</button> 
     </div>
@@ -173,6 +174,20 @@
                 <div class="form-group" style="grid-column: span 3;"><label>Note</label><textarea id="cadDesc" rows="4"></textarea></div>
             </div>
             <button type="submit" class="btn-success" style="width:100%;">REGISTRA VALUTAZIONE</button>
+        </form>
+    </div>
+
+    <div id="tab-addestramenti" class="tab-content hidden">
+        <form id="formAddestramento">
+            <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[+] REGISTRA ADDESTRAMENTO</h3>
+            <div class="form-grid">
+                <div class="form-group"><label>Nome e Cognome agente</label><input type="text" id="addNome" required></div>
+                <div class="form-group"><label>Matricola</label><input type="text" id="addMatricola" required></div>
+                <div class="form-group"><label>Addestramento eseguito</label><input type="text" id="addTipo" required></div>
+                <div class="form-group"><label>Voto da 1 a 10</label><input type="number" id="addVoto" min="1" max="10" required></div>
+                <div class="form-group" style="grid-column: span 2;"><label>Firma istruttore</label><input type="text" id="addFirma" required></div>
+            </div>
+            <button type="submit" class="btn-success" style="width:100%;">REGISTRA ADDESTRAMENTO</button>
         </form>
     </div>
 
@@ -245,6 +260,12 @@
             </section>
 
             <section style="margin-bottom:30px;">
+                <h4 style="color:var(--police-accent); border-bottom:1px solid #333;">LOG ADDESTRAMENTI</h4>
+                <div class="data-header"><span>Agente</span><span>Esito</span><span>Gestione</span></div>
+                <div id="admin-add-list"></div>
+            </section>
+
+            <section style="margin-bottom:30px;">
                 <h4 style="color:var(--police-accent); border-bottom:1px solid #333;">RECAP FASCICOLI</h4>
                 <div class="data-header"><span>Caso</span><span>Responsabile</span><span>Vedi</span></div>
                 <div id="admin-fascicoli-list"></div>
@@ -288,6 +309,7 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
     const EMAIL_ADMIN = "lspd-altocom@fusion.it";
+    const EMAIL_GESTIONALE = "lspd-gestionale@fusion.it";
 
     async function logAction(actionDescription) {
         const user = auth.currentUser;
@@ -321,6 +343,7 @@
         logAction("LOGOUT EFFETTUATO");
         auth.signOut().then(() => {
             document.getElementById('adminTabBtn').classList.add('hidden');
+            document.getElementById('addTabBtn').classList.add('hidden');
             document.getElementById('tab-admin').classList.add('hidden');
             document.getElementById('tab-dimissioni').classList.remove('hidden');
         }); 
@@ -328,7 +351,14 @@
 
     function setupInterface(email) {
         const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+        const isGestionale = (email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase());
         const accessiSpeciali = document.getElementById('card-accessi-speciali');
+
+        if (isAdmin || isGestionale) {
+            document.getElementById('addTabBtn').classList.remove('hidden');
+        } else {
+            document.getElementById('addTabBtn').classList.add('hidden');
+        }
 
         if (!isAdmin) {
             document.getElementById('tab-admin').classList.add('hidden');
@@ -340,16 +370,27 @@
             if(accessiSpeciali) accessiSpeciali.classList.remove('hidden');
             caricaDatiAdmin();
         }
-        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
+        
+        let displayRole = "ACCESSO AGENTE";
+        if(isAdmin) displayRole = "ACCESSO ALTO COMANDO";
+        if(isGestionale) displayRole = "ACCESSO GESTIONALE";
+        document.getElementById('userRoleDisplay').innerText = displayRole;
     }
 
     function switchTab(tab) {
         const user = auth.currentUser;
         const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
+        const isGestionale = user && user.email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase();
+        
         if (tab === 'admin' && !isAdmin) {
             showNotice("ACCESSO NEGATO", "error");
             return;
         }
+        if (tab === 'addestramenti' && !isAdmin && !isGestionale) {
+            showNotice("ACCESSO NEGATO", "error");
+            return;
+        }
+
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + tab).classList.remove('hidden');
@@ -368,6 +409,8 @@
             content = `<p><b>CASO:</b> ${d.caso}</p><p><b>RESPONSABILE:</b> ${d.agenteResp}</p><p><b>PROVE:</b> ${d.prove || 'Nessuna'}</p><p><b>REPORT:</b><br>${d.desc}</p>`;
         } else if(coll === 'rapporti_cadetti') {
             content = `<p><b>CADETTO:</b> ${d.cadetto}</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p><p><b>ESITO:</b> ${d.esito}</p><p><b>NOTE:</b><br>${d.note}</p>`;
+        } else if(coll === 'addestramenti') {
+            content = `<p><b>AGENTE:</b> ${d.agente}</p><p><b>MATRICOLA:</b> ${d.matricola}</p><p><b>ADDESTRAMENTO:</b> ${d.tipo}</p><p><b>VOTO:</b> ${d.voto}/10</p><p><b>ISTRUTTORE:</b> ${d.istruttore}</p>`;
         }
         document.getElementById('modalBody').innerHTML = content;
         document.getElementById('modalTitle').innerText = coll.toUpperCase();
@@ -412,6 +455,22 @@
                     <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
                     <span>${d.grado}</span>
                     <div style="display:flex; gap:5px;"><span style="color:var(--success); font-size:0.6rem;">EVASA</span></div>
+                </div>`;
+            });
+        });
+
+        db.collection("addestramenti").orderBy("timestamp", "desc").onSnapshot(snap => {
+            const container = document.getElementById('admin-add-list');
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div class="data-row">
+                    <span>${d.agente}</span>
+                    <span>Voto: ${d.voto}</span>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="showDetails('addestramenti', '${doc.id}')">Vedi</button>
+                        <button onclick="eliminaRecord('addestramenti', '${doc.id}')" class="btn-danger">X</button>
+                    </div>
                 </div>`;
             });
         });
@@ -468,6 +527,19 @@
         showNotice("REGISTRATO", "success"); e.target.reset();
     });
 
+    document.getElementById('formAddestramento').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await db.collection("addestramenti").add({
+            agente: document.getElementById('addNome').value,
+            matricola: document.getElementById('addMatricola').value,
+            tipo: document.getElementById('addTipo').value,
+            voto: document.getElementById('addVoto').value,
+            istruttore: document.getElementById('addFirma').value,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showNotice("REGISTRATO", "success"); e.target.reset();
+    });
+
     async function aggiornaStato(coll, id, nuovoStato) {
         await db.collection(coll).doc(id).update({ stato: nuovoStato });
         showNotice("AGGIORNATO", "success");
@@ -490,34 +562,28 @@
         setTimeout(() => n.remove(), 3000);
     }
 
-    // PROTEZIONE DATABASE LSPD - BLOCCO ISPEZIONE
 document.addEventListener('contextmenu', event => {
     event.preventDefault();
     showNotice("ACCESSO NEGATO: TASTO DESTRO DISABILITATO", "error");
 });
 
 document.onkeydown = function(e) {
-    // Blocca F12
     if(e.keyCode == 123) {
         showNotice("PROTOCOLLO DI SICUREZZA: F12 BLOCCATO", "error");
         return false;
     }
-    // Blocca Ctrl+Shift+I (Ispeziona)
     if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
         showNotice("TENTATIVO DI VIOLAZIONE RILEVATO", "error");
         return false;
     }
-    // Blocca Ctrl+Shift+J (Console)
     if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
         showNotice("ACCESSO CONSOLE NEGATO", "error");
         return false;
     }
-    // Blocca Ctrl+U (Visualizza Sorgente)
     if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
         showNotice("SORGENTE CRIPTATA - ACCESSO NEGATO", "error");
         return false;
     }
-    // Blocca Ctrl+Shift+C (Ispeziona Elemento)
     if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
         showNotice("SISTEMA DI PROTEZIONE ATTIVO", "error");
         return false;
