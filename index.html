@@ -60,6 +60,14 @@
         .btn-danger { border-color: var(--danger); color: var(--danger); }
         .btn-success { border-color: var(--success); color: var(--success); }
 
+        /* Stili aggiuntivi per Protocollo */
+        .protocol-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .protocol-card { background: rgba(0, 85, 255, 0.05); border: 1px solid rgba(0, 85, 255, 0.3); padding: 15px; position: relative; }
+        .protocol-card h4 { font-family: 'Orbitron'; color: var(--police-accent); margin-top: 0; font-size: 0.8rem; border-bottom: 1px solid var(--police-blue); padding-bottom: 5px; }
+        .protocol-card a { color: var(--success); text-decoration: none; font-size: 0.9rem; }
+        .protocol-card a:hover { text-decoration: underline; }
+        .credential-box { background: rgba(0,0,0,0.5); padding: 8px; margin-top: 10px; font-family: monospace; font-size: 0.85rem; border-left: 2px solid var(--police-accent); }
+
         .main-footer {
             width: 100%;
             padding: 30px 0;
@@ -170,8 +178,56 @@
     </div>
 
     <div id="tab-protocollo" class="tab-content hidden">
-        <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[!] PROTOCOLLO OPERATIVO</h3>
-        <p>In questa sezione verranno inseriti i protocolli e i codici di condotta LSPD.</p>
+        <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[!] PROTOCOLLI E ACCESSI ESTERNI</h3>
+        
+        <div class="protocol-grid">
+            <div class="protocol-card">
+                <h4>PORTALE ESAMI</h4>
+                <a href="https://lspd-esami.vitriotv.com" target="_blank">Apri Link Diretto</a>
+                <div class="credential-box">
+                    Email: lspd-esami@fusion.it<br>
+                    Pass: Esamilspd@
+                </div>
+            </div>
+
+            <div class="protocol-card">
+                <h4>BANDO REPARTI</h4>
+                <a href="https://lspd-bandi.vitriotv.com" target="_blank">Apri Link Diretto</a>
+                <div class="credential-box">
+                    Email: lspd-bandi@fusion.it<br>
+                    Pass: Bandilspd@
+                </div>
+            </div>
+
+            <div class="protocol-card">
+                <h4>GESTIONALE</h4>
+                <a href="https://lspd-gestionale.vitriotv.com/" target="_blank">Apri Link Diretto</a>
+                <div class="credential-box">
+                    Email: lspd-gestionale@fusion.it<br>
+                    Pass: Lspdgestionale@
+                </div>
+            </div>
+
+            <div class="protocol-card">
+                <h4>RECLUTAMENTO CITTADINO</h4>
+                <a href="https://lspd-recruit.vitriotv.com" target="_blank">Apri Link Diretto</a>
+            </div>
+
+            <div class="protocol-card">
+                <h4>MODULO MATRICOLE</h4>
+                <a href="https://lspd-matricole.vitriotv.com" target="_blank">Apri Link Diretto</a>
+            </div>
+
+            <div class="protocol-card">
+                <h4>ACCESSI SPECIALI</h4>
+                <div class="credential-box">
+                    <b>ALTO COMANDO:</b><br>
+                    lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
+                    <b>RECLUTATORI:</b><br>
+                    lspd-reclutatori@fusion.it | Lspdreclutatori@
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="tab-admin" class="tab-content hidden">
