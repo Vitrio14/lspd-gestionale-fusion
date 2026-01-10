@@ -354,33 +354,33 @@ document.getElementById('loginForm').addEventListener('submit', e => {
         }); 
     }
 
-    function setupInterface(email) {
-        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
-        const isGestionale = (email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase());
-        const accessiSpeciali = document.getElementById('card-accessi-speciali');
+async function setupInterface(email) {
+    const user = auth.currentUser;
+    const isAdmin = email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
+    const isGestionale = email.toLowerCase() === EMAIL_GESTIONALE.toLowerCase();
 
-        if (isAdmin || isGestionale) {
-            document.getElementById('addTabBtn').classList.remove('hidden');
-        } else {
-            document.getElementById('addTabBtn').classList.add('hidden');
-        }
+    // 🔑 FORZA il token prima di Firestore
+    await user.getIdToken(true);
 
-        if (!isAdmin) {
-            document.getElementById('tab-admin').classList.add('hidden');
-            document.getElementById('adminTabBtn').classList.add('hidden');
-            if(accessiSpeciali) accessiSpeciali.classList.add('hidden');
-            switchTab('dimissioni');
-        } else {
-            document.getElementById('adminTabBtn').classList.remove('hidden');
-            if(accessiSpeciali) accessiSpeciali.classList.remove('hidden');
-            caricaDatiAdmin();
-        }
-        
-        let displayRole = "ACCESSO AGENTE";
-        if(isAdmin) displayRole = "ACCESSO ALTO COMANDO";
-        if(isGestionale) displayRole = "ACCESSO GESTIONALE";
-        document.getElementById('userRoleDisplay').innerText = displayRole;
+    if (isAdmin) {
+        document.getElementById('adminTabBtn').classList.remove('hidden');
+        document.getElementById('card-accessi-speciali')?.classList.remove('hidden');
+        caricaDatiAdmin(); // ⬅️ SOLO ORA
+    } else {
+        document.getElementById('adminTabBtn').classList.add('hidden');
+        document.getElementById('tab-admin').classList.add('hidden');
     }
+
+    if (isAdmin || isGestionale) {
+        document.getElementById('addTabBtn').classList.remove('hidden');
+    }
+
+    document.getElementById('userRoleDisplay').innerText =
+        isAdmin ? "ACCESSO ALTO COMANDO"
+        : isGestionale ? "ACCESSO GESTIONALE"
+        : "ACCESSO AGENTE";
+}
+
 
     function switchTab(tab) {
         const user = auth.currentUser;
@@ -603,6 +603,7 @@ document.getElementById('formAddestramento').addEventListener('submit', async (e
 </script>
 </body>
 </html>
+
 
 
 
