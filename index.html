@@ -60,7 +60,6 @@
         .btn-danger { border-color: var(--danger); color: var(--danger); }
         .btn-success { border-color: var(--success); color: var(--success); }
 
-        /* Stili aggiuntivi per Protocollo */
         .protocol-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
         .protocol-card { background: rgba(0, 85, 255, 0.05); border: 1px solid rgba(0, 85, 255, 0.3); padding: 15px; position: relative; }
         .protocol-card h4 { font-family: 'Orbitron'; color: var(--police-accent); margin-top: 0; font-size: 0.8rem; border-bottom: 1px solid var(--police-blue); padding-bottom: 5px; }
@@ -179,7 +178,6 @@
 
     <div id="tab-protocollo" class="tab-content hidden">
         <h3 style="font-family:'Orbitron'; font-size:0.8rem; color:var(--police-accent);">[!] PROTOCOLLI E ACCESSI ESTERNI</h3>
-        
         <div class="protocol-grid">
             <div class="protocol-card">
                 <h4>PORTALE ESAMI</h4>
@@ -218,16 +216,15 @@
                 <a href="https://lspd-matricole.vitriotv.com" target="_blank">Apri Link Diretto</a>
             </div>
 
-            <div class="protocol-card">
+            <div id="card-accessi-speciali" class="protocol-card hidden"> 
                 <h4>ACCESSI SPECIALI</h4>
-<div id="card-accessi-speciali" class="protocol-card hidden"> <h4>ACCESSI SPECIALI</h4>
-    <div class="credential-box">
-        <b>ALTO COMANDO:</b><br>
-        lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
-        <b>RECLUTATORI:</b><br>
-        lspd-reclutatori@fusion.it | Lspdreclutatori@
-    </div>
-</div>
+                <div class="credential-box">
+                    <b>ALTO COMANDO:</b><br>
+                    lspd-altocom@fusion.it | Lspdaltocomando@<br><br>
+                    <b>RECLUTATORI:</b><br>
+                    lspd-reclutatori@fusion.it | Lspdreclutatori@
+                </div>
+            </div>
         </div>
     </div>
 
@@ -278,7 +275,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // CREDENZIALI INTEGRATE
     const firebaseConfig = {
         apiKey: "AIzaSyDfIW4GjBZ4QGPvfJtzLAr34VxDRLzcU6M",
         authDomain: "lspd-portal-d34b0.firebaseapp.com",
@@ -327,41 +323,31 @@
             document.getElementById('adminTabBtn').classList.add('hidden');
             document.getElementById('tab-admin').classList.add('hidden');
             document.getElementById('tab-dimissioni').classList.remove('hidden');
-            document.getElementById('admin-dimissioni-list').innerHTML = "";
-            document.getElementById('admin-dimissioni-evase-list').innerHTML = "";
-            document.getElementById('admin-fascicoli-list').innerHTML = "";
-            document.getElementById('admin-cadetti-list').innerHTML = "";
         }); 
     }
 
-function setupInterface(email) {
-    const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
-    const accessiSpeciali = document.getElementById('card-accessi-speciali');
+    function setupInterface(email) {
+        const isAdmin = (email.toLowerCase() === EMAIL_ADMIN.toLowerCase());
+        const accessiSpeciali = document.getElementById('card-accessi-speciali');
 
-    if (!isAdmin) {
-        document.getElementById('tab-admin').classList.add('hidden');
-        document.getElementById('adminTabBtn').classList.add('hidden');
-        
-        // Assicurati che gli accessi speciali siano nascosti per gli agenti
-        if(accessiSpeciali) accessiSpeciali.classList.add('hidden');
-        
-        switchTab('dimissioni');
-    } else {
-        document.getElementById('adminTabBtn').classList.remove('hidden');
-        
-        // Mostra gli accessi speciali solo all'Alto Comando
-        if(accessiSpeciali) accessiSpeciali.classList.remove('hidden');
-        
-        caricaDatiAdmin();
+        if (!isAdmin) {
+            document.getElementById('tab-admin').classList.add('hidden');
+            document.getElementById('adminTabBtn').classList.add('hidden');
+            if(accessiSpeciali) accessiSpeciali.classList.add('hidden');
+            switchTab('dimissioni');
+        } else {
+            document.getElementById('adminTabBtn').classList.remove('hidden');
+            if(accessiSpeciali) accessiSpeciali.classList.remove('hidden');
+            caricaDatiAdmin();
+        }
+        document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
     }
-    document.getElementById('userRoleDisplay').innerText = isAdmin ? "ACCESSO ALTO COMANDO" : "ACCESSO AGENTE";
-}
 
     function switchTab(tab) {
         const user = auth.currentUser;
         const isAdmin = user && user.email.toLowerCase() === EMAIL_ADMIN.toLowerCase();
         if (tab === 'admin' && !isAdmin) {
-            showNotice("ACCESSO NEGATO: AREA RISERVATA", "error");
+            showNotice("ACCESSO NEGATO", "error");
             return;
         }
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
@@ -369,11 +355,9 @@ function setupInterface(email) {
         document.getElementById('tab-' + tab).classList.remove('hidden');
         const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.innerText.toLowerCase().includes(tab.toLowerCase()));
         if(activeBtn) activeBtn.classList.add('active');
-        logAction("ACCESSO ALLA SEZIONE: " + tab.toUpperCase());
     }
 
     async function showDetails(coll, id) {
-        logAction("VISUALIZZATI DETTAGLI [" + coll.toUpperCase() + "] ID: " + id);
         const doc = await db.collection(coll).doc(id).get();
         if(!doc.exists) return;
         const d = doc.data();
@@ -427,10 +411,7 @@ function setupInterface(email) {
                 container.innerHTML += `<div class="data-row" style="opacity: 0.7; border-color: rgba(0, 255, 136, 0.2);">
                     <span style="cursor:pointer;" onclick="showDetails('dimissioni', '${doc.id}')">📂 ${d.nome}</span>
                     <span>${d.grado}</span>
-                    <div style="display:flex; gap:5px;">
-                        <span style="color:var(--success); font-size:0.6rem; font-family:'Orbitron';">EVASA</span>
-                        <button onclick="eliminaRecord('dimissioni', '${doc.id}')" class="btn-danger" style="padding:2px 6px; font-size:0.5rem;">ELIMINA</button>
-                    </div>
+                    <div style="display:flex; gap:5px;"><span style="color:var(--success); font-size:0.6rem;">EVASA</span></div>
                 </div>`;
             });
         });
@@ -464,45 +445,36 @@ function setupInterface(email) {
             firma: document.getElementById('dimFirma').value,
             stato: 'PENDENTE', timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        logAction("INVIATE DIMISSIONI PER: " + nome);
         showNotice("TRASMESSO", "success"); e.target.reset();
     });
 
     document.getElementById('formFascicoli').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const caso = document.getElementById('fasCaso').value;
         await db.collection("fascicoli").add({
-            caso: caso, agenteResp: document.getElementById('fasAgenteResp').value,
-            prove: document.getElementById('fasProve').value,
-            desc: document.getElementById('fasDesc').value,
+            caso: document.getElementById('fasCaso').value, agenteResp: document.getElementById('fasAgenteResp').value,
+            prove: document.getElementById('fasProve').value, desc: document.getElementById('fasDesc').value,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        logAction("ARCHIVIATO NUOVO FASCICOLO: " + caso);
         showNotice("ARCHIVIATO", "success"); e.target.reset();
     });
 
     document.getElementById('formCadetti').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const cad = document.getElementById('cadNome').value;
         await db.collection("rapporti_cadetti").add({
-            cadetto: cad, istruttore: document.getElementById('cadAgente').value,
-            esito: document.getElementById('cadRapporto').value,
-            note: document.getElementById('cadDesc').value,
+            cadetto: document.getElementById('cadNome').value, istruttore: document.getElementById('cadAgente').value,
+            esito: document.getElementById('cadRapporto').value, note: document.getElementById('cadDesc').value,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        logAction("REGISTRATA VALUTAZIONE CADETTO: " + cad);
         showNotice("REGISTRATO", "success"); e.target.reset();
     });
 
     async function aggiornaStato(coll, id, nuovoStato) {
         await db.collection(coll).doc(id).update({ stato: nuovoStato });
-        logAction("CAMBIATO STATO RECORD [" + coll.toUpperCase() + "] IN: " + nuovoStato);
         showNotice("AGGIORNATO", "success");
     }
 
     async function eliminaRecord(coll, id) {
         if(confirm("ELIMINARE DEFINITIVAMENTE?")) {
-            logAction("ELIMINATO RECORD [" + coll.toUpperCase() + "] ID: " + id);
             await db.collection(coll).doc(id).delete();
             showNotice("ELIMINATO", "error");
         }
@@ -517,7 +489,40 @@ function setupInterface(email) {
         c.appendChild(n);
         setTimeout(() => n.remove(), 3000);
     }
+
+    // PROTEZIONE DATABASE LSPD - BLOCCO ISPEZIONE
+document.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    showNotice("ACCESSO NEGATO: TASTO DESTRO DISABILITATO", "error");
+});
+
+document.onkeydown = function(e) {
+    // Blocca F12
+    if(e.keyCode == 123) {
+        showNotice("PROTOCOLLO DI SICUREZZA: F12 BLOCCATO", "error");
+        return false;
+    }
+    // Blocca Ctrl+Shift+I (Ispeziona)
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+        showNotice("TENTATIVO DI VIOLAZIONE RILEVATO", "error");
+        return false;
+    }
+    // Blocca Ctrl+Shift+J (Console)
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+        showNotice("ACCESSO CONSOLE NEGATO", "error");
+        return false;
+    }
+    // Blocca Ctrl+U (Visualizza Sorgente)
+    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+        showNotice("SORGENTE CRIPTATA - ACCESSO NEGATO", "error");
+        return false;
+    }
+    // Blocca Ctrl+Shift+C (Ispeziona Elemento)
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+        showNotice("SISTEMA DI PROTEZIONE ATTIVO", "error");
+        return false;
+    }
+};
 </script>
 </body>
 </html>
-
